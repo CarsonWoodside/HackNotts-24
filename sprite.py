@@ -203,7 +203,10 @@ def draw_score():
 def draw_timer():
     font = pygame.font.Font(None, 36)
     timer_surface = font.render(f'Time Left: {max(0, int(timer))}', True, WHITE)
-    timer_rect = timer_surface.get_rect(topleft=(10, 70))
+    timer_rect = timer_surface.get_rect(topright=(WIDTH - 30, 70))  # Positioned under the score
+    timer_bg = pygame.Surface(timer_rect.inflate(20, 20).size, pygame.SRCALPHA)
+    timer_bg.fill((*BG_GREY, 216))
+    window.blit(timer_bg, timer_rect.inflate(20, 20).topleft)
     window.blit(timer_surface, timer_rect)
 
 def draw_win_screen():
@@ -224,7 +227,7 @@ def draw_win_screen():
 def draw_lose_screen():
     window.fill(BLACK)
     font = pygame.font.Font(None, 72)
-    lose_text = font.render("You Lose!", True, WHITE)
+    lose_text = font.render("Game Over!", True, WHITE)
     lose_rect = lose_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
     window.blit(lose_text, lose_rect)
 
@@ -300,7 +303,7 @@ while True:
     player.draw(window)
     draw_hearts()
     draw_score()
-    draw_timer()  # Draw the timer
+    draw_timer()
 
     if game_won:
         draw_win_screen()
