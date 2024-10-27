@@ -1,46 +1,133 @@
-import pygame
-from pygame.locals import *
-from PIL import Image
+import pygame 
 
-img = Image.open("images/test2.jpeg")
+import tkinter as tk 
 
-target_size = (1000, 1000)
-resized = img.resize(target_size)
-resized.save("images/output.jpeg")
+from tkinter import filedialog 
 
-pygame.init()
+ 
 
-SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 1000
+# Function to open file dialog 
 
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Platformer")
+def open_file_dialog(): 
 
-#images
-bg_img = pygame.image.load('images/output.jpeg')
+    file_path = filedialog.askopenfilename(title="Select an Image",  
 
-player = pygame.Rect((300, 200, 50, 50))
+                                            filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif")]) 
 
+    return file_path 
 
-run = True
-while run:
+ 
 
-    screen.blit(bg_img, (0, 0))
+# Initialize Pygame 
 
-    # key = pygame.key.get_pressed()
-    # if key[pygame.K_a] == True:
-    #     player.move_ip(-1, 0)
-    # elif key[pygame.K_d] == True:
-    #     player.move_ip(1, 0)
-    # elif key[pygame.K_s] == True:
-    #     player.move_ip(0, 1)
-    # elif key[pygame.K_w] == True:
-    #     player.move_ip(0, -1)
+pygame.init() 
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            run = False
+X = 600 
 
-    pygame.display.update()
+Y = 600 
 
-pygame.quit()
+scrn = pygame.display.set_mode((X, Y)) 
+
+pygame.display.set_caption('Image Viewer') 
+
+ 
+
+# Colors 
+
+button_color = (0, 128, 255) 
+
+button_hover_color = (0, 255, 255) 
+
+text_color = (255, 255, 255) 
+
+ 
+
+# Button dimensions 
+
+button_rect = pygame.Rect(200, 250, 200, 50) 
+
+ 
+
+# Main loop 
+
+status = True 
+
+loaded_image = None 
+
+ 
+
+while status: 
+
+    scrn.fill((0, 0, 0))  # Clear the screen 
+
+ 
+
+    # Draw the button 
+
+    if button_rect.collidepoint(pygame.mouse.get_pos()): 
+
+        pygame.draw.rect(scrn, button_hover_color, button_rect) 
+
+    else: 
+
+        pygame.draw.rect(scrn, button_color, button_rect) 
+
+ 
+
+    # Draw button text 
+
+    font = pygame.font.Font(None, 36) 
+
+    text = font.render('Open Image', True, text_color) 
+
+    text_rect = text.get_rect(center=button_rect.center) 
+
+    scrn.blit(text, text_rect) 
+
+ 
+
+    # Display loaded image 
+
+    if loaded_image: 
+
+        scrn.blit(loaded_image, (0, 0)) 
+
+ 
+
+    pygame.display.flip() 
+
+ 
+
+    for event in pygame.event.get(): 
+
+        if event.type == pygame.QUIT: 
+
+            status = False 
+
+        if event.type == pygame.MOUSEBUTTONDOWN: 
+
+            if event.button == 1 and button_rect.collidepoint(event.pos): 
+
+                # Open file dialog and load image 
+
+                root = tk.Tk() 
+
+                root.withdraw()  # Hide the root window 
+
+                file_path = open_file_dialog() 
+
+                if file_path: 
+
+                    try: 
+
+                        loaded_image = pygame.image.load(file_path).convert() 
+
+                    except pygame.error: 
+
+                        print("Error loading image.") 
+
+ 
+
+# Deactivate Pygame 
+
+pygame.quit() 

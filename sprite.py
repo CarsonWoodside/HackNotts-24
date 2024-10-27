@@ -25,8 +25,8 @@ window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Image to Top Down Game")
 
 # Load background images
-bg_img = pygame.image.load('images/bw/eightBW.jpg')
-bgOver_img = pygame.image.load('images/green/eight.jpg')
+bg_img = pygame.image.load('images/bw/BW2.jpg')
+bgOver_img = pygame.image.load('images/green/two.png')
 
 # Load heart image
 heart_image = pygame.image.load('assets/hearts/heart.png')
