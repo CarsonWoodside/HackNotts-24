@@ -55,25 +55,6 @@ DEFAULT_IMAGE_SIZE = (50, 50)
 char = pygame.image.load('assets/player/new/idle.png')
 char = pygame.transform.scale(char, DEFAULT_IMAGE_SIZE)
 
-def load_sprite_sheets(dir1, dir2, width, height, direction=False):
-    path = join("assets", dir1, dir2)
-    images = [f for f in listdir(path) if isfile(join(path, f))]
-    all_sprites = {}
-    for image in images:
-        sprite_sheet = pygame.image.load(join(path, image)).convert_alpha()
-        sprites = []
-        for i in range(sprite_sheet.get_width() // width):
-            surface = pygame.Surface((width, height), pygame.SRCALPHA, 32)
-            rect = pygame.Rect(i * width, 0, width, height)
-            surface.blit(sprite_sheet, (0, 0), rect)
-            sprites.append(pygame.transform.scale2x(surface))
-        if direction:
-            all_sprites[image.replace(".png", "") + "_right"] = sprites
-            all_sprites[image.replace(".png", "") + "_left"] = [pygame.transform.flip(sprite, True, False) for sprite in sprites]
-        else:
-            all_sprites[image.replace(".png", "")] = sprites
-    return all_sprites
-
 # Constants for the player
 PLAYER_SIZE = 50
 PLAYER_SPEED = 5
@@ -88,8 +69,6 @@ game_won = False
 game_lose = False
 
 class Player:
-    SPRITES = load_sprite_sheets("player", "ghost", 32, 32, True)
-
     def __init__(self, initial_position, size, speed):
         self.pos = list(initial_position)
         self.angle = 0
