@@ -5,31 +5,35 @@ import random
 from os import listdir
 from os.path import isfile, join
 
-clock = pygame.time.Clock()
 pygame.init()
 
+# Constants and settings
 WIDTH = 800
 HEIGHT = 600
 FPS = 60
-
 WHITE = (255, 255, 255)
 BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
 BG_GREY = (50, 50, 50)
-
 CIRCLE_POSITION = (400, 300)
 CIRCLE_RADIUS = 45
 MAX_HEARTS = 3
 
+# Game window setup
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Image to Top Down Game")
 
-# Load images
+# Load background images
 bg_img = pygame.image.load('images/bw/threeBW.jpg')
 bgOver_img = pygame.image.load('images/bw/three.jpg')
+
+# Load heart image
 heart_image = pygame.image.load('assets/hearts/heart.png')
 heart_image = pygame.transform.scale(heart_image, (90, 90))
-candy_assets = ['assets/candy/candy1.png', 'assets/candy/candy2.png', 'assets/candy/candy3.png', 'assets/candy/candy4.png']
+
+# Load candy images
+candy_assets = ['assets/candy/candy1.png', 'assets/candy/candy2.png', 
+                'assets/candy/candy3.png', 'assets/candy/candy4.png']
 
 # Load player walking animations
 walkRight = [pygame.image.load('assets/player/new/walk1.png'),
@@ -50,10 +54,29 @@ DEFAULT_IMAGE_SIZE = (50, 50)
 char = pygame.image.load('assets/player/new/idle.png')
 char = pygame.transform.scale(char, DEFAULT_IMAGE_SIZE)
 
+def load_sprite_sheets(dir1, dir2, width, height, direction=False):
+    path = join("assets", dir1, dir2)
+    images = [f for f in listdir(path) if isfile(join(path, f))]
+    all_sprites = {}
+    for image in images:
+        sprite_sheet = pygame.image.load(join(path, image)).convert_alpha()
+        sprites = []
+        for i in range(sprite_sheet.get_width() // width):
+            surface = pygame.Surface((width, height), pygame.SRCALPHA, 32)
+            rect = pygame.Rect(i * width, 0, width, height)
+            surface.blit(sprite_sheet, (0, 0), rect)
+            sprites.append(pygame.transform.scale2x(surface))
+        if direction:
+            all_sprites[image.replace(".png", "") + "_right"] = sprites
+            all_sprites[image.replace(".png", "") + "_left"] = [pygame.transform.flip(sprite, True, False) for sprite in sprites]
+        else:
+            all_sprites[image.replace(".png", "")] = sprites
+    return all_sprites
+
 # Constants for the player
-PLAYER_SIZE = 25
+PLAYER_SIZE = 50
 PLAYER_SPEED = 5
-PLAYER_INITIAL_POSITION = (400 - PLAYER_SIZE // 2, 300 - PLAYER_SIZE // 2)
+PLAYER_INITIAL_POSITION = (100 - PLAYER_SIZE // 2, 300 - PLAYER_SIZE // 2)
 
 # Game variables
 score = 0
@@ -62,8 +85,9 @@ coins = []
 game_running = True
 game_won = False
 
-
 class Player:
+    SPRITES = load_sprite_sheets("player", "ghost", 32, 32, True)
+
     def __init__(self, initial_position, size, speed):
         self.pos = list(initial_position)
         self.angle = 0
@@ -71,24 +95,45 @@ class Player:
         self.speed = speed
         self.hearts = MAX_HEARTS
         self.is_damaged = False
+        self.isJump = False
+        self.jumpCount = 10
+        self.walkCount = 0
 
     def move(self, keys):
-        new_pos = self.pos[:]
-        if keys[pygame.K_w]:
-            new_pos[0] += self.speed * math.sin(math.radians(self.angle))
-            new_pos[1] -= self.speed * math.cos(math.radians(self.angle))
-        if keys[pygame.K_s]:
-            new_pos[0] -= self.speed * math.sin(math.radians(self.angle))
-            new_pos[1] += self.speed * math.cos(math.radians(self.angle))
-
-        return new_pos
+        if not self.isJump:
+            if keys[pygame.K_w]:
+                self.pos[0] += self.speed * math.sin(math.radians(self.angle))
+                self.pos[1] -= self.speed * math.cos(math.radians(self.angle))
+            if keys[pygame.K_s]:
+                self.pos[0] -= self.speed * math.sin(math.radians(self.angle))
+                self.pos[1] += self.speed * math.cos(math.radians(self.angle))
+        else:
+            if self.jumpCount >= -10:
+                self.pos[1] -= (self.jumpCount * abs(self.jumpCount)) * 0.5
+                self.jumpCount -= 1
+            else:
+                self.jumpCount = 10
+                self.isJump = False
 
     def rotate(self, direction):
         self.angle += direction
         self.angle %= 360
 
-    def draw(self, window, player_surface):
-        rotated_surface = pygame.transform.rotate(player_surface, -self.angle)
+    def draw(self, window):
+        if self.walkCount >= len(walkLeft) * 3:
+            self.walkCount = 0
+        if keys[pygame.K_a]:
+            walkLchar = pygame.transform.scale(walkLeft[self.walkCount // 3], DEFAULT_IMAGE_SIZE)
+            rotated_surface = pygame.transform.rotate(walkLchar, -self.angle)
+            self.walkCount += 1
+        elif keys[pygame.K_d]:
+            walkRchar = pygame.transform.scale(walkRight[self.walkCount // 3], DEFAULT_IMAGE_SIZE)
+            rotated_surface = pygame.transform.rotate(walkRchar, -self.angle)
+            self.walkCount += 1
+        else:
+            rotated_surface = pygame.transform.rotate(char, -self.angle)
+            self.walkCount = 0
+
         rotated_rect = rotated_surface.get_rect(center=(self.pos[0] + self.size // 2, self.pos[1] + self.size // 2))
         window.blit(rotated_surface, rotated_rect.topleft)
 
@@ -109,10 +154,6 @@ def spawn_coins(num_coins):
                 candy_image = pygame.transform.scale(candy_image, (30, 30))
                 coins.append((candy_image, (x, y)))
                 break
-
-def draw(self, window):
-    self.sprite = self.SPRITES["idle_" + self.direction][0]
-    window.blit(self.sprite, (self.rect.x, self.rect.y))
 
 def reset_game():
     global score, coins, game_running, game_won
@@ -159,6 +200,8 @@ player = Player(PLAYER_INITIAL_POSITION, PLAYER_SIZE, PLAYER_SPEED)
 # Spawn initial coins
 spawn_coins(num_coins)
 
+clock = pygame.time.Clock()
+
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -168,51 +211,40 @@ while True:
             if draw_win_screen().collidepoint(event.pos):
                 reset_game()
 
+    keys = pygame.key.get_pressed()
+
     if game_running:
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_d]: player.rotate(5)
-        if keys[pygame.K_a]: player.rotate(-5)
+        if keys[pygame.K_d]:
+            player.rotate(-5)
+        if keys[pygame.K_a]:
+            player.rotate(5)
 
-        new_pos = player.move(keys)
-        player_center_pos = (int(new_pos[0] + player.size // 2), int(new_pos[1] + player.size // 2))
+        player.move(keys)
 
-        if bg_img.get_at(player_center_pos)[:3] == (0, 0, 0) and not (CIRCLE_POSITION[0] - CIRCLE_RADIUS < player_center_pos[0] < CIRCLE_POSITION[0] + CIRCLE_RADIUS and 
-                                                               CIRCLE_POSITION[1] - CIRCLE_RADIUS < player_center_pos[1] < CIRCLE_POSITION[1] + CIRCLE_RADIUS):
-            if not player.is_damaged:
-                player.hearts -= 1
-                player.is_damaged = True
-                if player.hearts <= 0:
-                    pygame.quit()
-                    sys.exit()
-        else:
-            player.is_damaged = False
-            player.pos = new_pos
+        player_center_pos = (player.pos[0] + PLAYER_SIZE // 2, player.pos[1] + PLAYER_SIZE // 2)
 
-        player.pos[0] = max(0, min(player.pos[0], WIDTH - player.size))
-        player.pos[1] = max(0, min(player.pos[1], HEIGHT - player.size))
-
-        for coin in coins[:]:
-            coin_image, coin_position = coin
-            player_rect = pygame.Rect(player.pos[0], player.pos[1], player.size, player.size)
-            coin_rect = pygame.Rect(coin_position[0], coin_position[1], 30, 30)
-            if player_rect.colliderect(coin_rect):
+        for candy_image, (x, y) in coins[:]:
+            if math.hypot(candy_image.get_rect(center=(x, y)).center[0] - player_center_pos[0],
+                           candy_image.get_rect(center=(x, y)).center[1] - player_center_pos[1]) < 30:
                 score += 1
-                coins.remove(coin)
-            else:
-                window.blit(coin_image, coin_position)
+                coins.remove((candy_image, (x, y)))
+                if score >= num_coins:
+                    game_won = True
+                    game_running = False
 
-        if score == num_coins:
-            game_running = False
-            game_won = True
-        window.blit(bg_img, (0, 0))
+    # Draw everything
+    window.blit(bg_img, (0, 0))
+    if not game_running and not game_won:
         window.blit(bgOver_img, (0, 0))
-        pygame.draw.circle(window, BLUE, CIRCLE_POSITION, CIRCLE_RADIUS)
-        player.draw(window, pygame.Surface((player.size, player.size), pygame.SRCALPHA, 32))
-        
-        draw_hearts()
-        draw_score()
 
-    elif game_won:
+    for candy_image, (x, y) in coins:
+        window.blit(candy_image, (x, y))
+
+    player.draw(window)
+    draw_hearts()
+    draw_score()
+
+    if game_won:
         draw_win_screen()
 
     pygame.display.flip()
