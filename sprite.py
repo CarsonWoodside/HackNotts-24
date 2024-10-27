@@ -2,6 +2,7 @@ import pygame
 import sys
 import math
 import random
+import time
 from os import listdir
 from os.path import isfile, join
 
@@ -24,8 +25,8 @@ window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Image to Top Down Game")
 
 # Load background images
-bg_img = pygame.image.load('images/bw/threeBW.jpg')
-bgOver_img = pygame.image.load('images/bw/three.jpg')
+bg_img = pygame.image.load('images/bw/eightBW.jpg')
+bgOver_img = pygame.image.load('images/green/eight.jpg')
 
 # Load heart image
 heart_image = pygame.image.load('assets/hearts/heart.png')
@@ -146,6 +147,13 @@ class Player:
         self.hearts = MAX_HEARTS
         self.is_damaged = False
 
+    def bounce(self):
+        # Reverse the movement direction
+        self.pos[0] -= self.speed * math.sin(math.radians(self.angle)) * 2
+        self.pos[1] += self.speed * math.cos(math.radians(self.angle)) * 2
+        self.angle = (self.angle + 180) % 360 # reverse angle to face back
+
+
 def spawn_coins(num_coins):
     for _ in range(num_coins):
         while True:
@@ -213,6 +221,7 @@ def draw_lose_screen():
     window.blit(button_text, button_rect)
 
     return button_rect
+    
 
 
 player = Player(PLAYER_INITIAL_POSITION, PLAYER_SIZE, PLAYER_SPEED)
@@ -245,6 +254,8 @@ while True:
         player_center_pos = (int(new_pos[0] + player.size // 2), int(new_pos[1] + player.size // 2))
         if bg_img.get_at(player_center_pos)[:3] == (0, 0, 0) and not (CIRCLE_POSITION[0] - CIRCLE_RADIUS < player_center_pos[0] < CIRCLE_POSITION[0] + CIRCLE_RADIUS and 
                                                                CIRCLE_POSITION[1] - CIRCLE_RADIUS < player_center_pos[1] < CIRCLE_POSITION[1] + CIRCLE_RADIUS):
+            
+            player.bounce()
             if not player.is_damaged:
                 player.hearts -= 1
                 player.is_damaged = True
