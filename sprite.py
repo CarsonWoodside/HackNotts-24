@@ -139,6 +139,30 @@ class Player:
         self.pos[1] += self.speed * math.cos(math.radians(self.angle)) * 2
         self.angle = (self.angle + 180) % 360
 
+def spawn_player():
+    max_attempts = 100
+    attempt = 0
+    while max_attempts > 0:
+        x = random.randint(27, WIDTH - 27)
+        y = random.randint(27, HEIGHT - 27)
+
+        all_white = True
+        for dx in range(-30, 30):
+            for dy in range(-30, 30):
+                if bg_img.get_at((x + dx, y + dy))[:3] != WHITE[:3]:
+                    all_white = False
+                    break
+            if not all_white:
+                break
+
+        if all_white:
+            return (x, y)  # Return the valid position for the player
+
+        max_attempts -= 1
+        attempt += 1
+
+    return PLAYER_INITIAL_POSITION
+
 def spawn_coins(num_coins):
     for _ in range(num_coins):
         max_attempts = 100
@@ -175,7 +199,10 @@ def spawn_coins(num_coins):
 
 def reset_game():
     global score, coins, game_running, game_won, game_lose, timer
-    player.reset(PLAYER_INITIAL_POSITION)
+    player.pos = list(spawn_player())  # Set player position to a random white area
+    player.angle = 0
+    player.hearts = MAX_HEARTS
+    player.is_damaged = False
     score = 0
     coins.clear()
     spawn_coins(num_coins)
@@ -240,7 +267,7 @@ def draw_lose_screen():
     return lose_button_rect
 
 spawn_coins(num_coins)
-player = Player(PLAYER_INITIAL_POSITION, PLAYER_SIZE, PLAYER_SPEED)
+player = Player(spawn_player(), PLAYER_SIZE, PLAYER_SPEED)
 clock = pygame.time.Clock()
 
 while True:
@@ -303,7 +330,7 @@ while True:
     player.draw(window)
     draw_hearts()
     draw_score()
-    draw_timer()
+    draw_timer()  # Draw the timer
 
     if game_won:
         draw_win_screen()
