@@ -135,15 +135,35 @@ class Player:
 
 def spawn_coins(num_coins):
     for _ in range(num_coins):
-        while True:
-            x = random.randint(0, WIDTH)
-            y = random.randint(0, HEIGHT)
-            if bg_img.get_at((x, y))[:3] == WHITE[:3]:
+        max_attempts = 100  # Limit attempts to prevent infinite loops
+        while max_attempts > 0:
+            x = random.randint(27, WIDTH - 27)  # Avoid edges to allow space for checking
+            y = random.randint(27, HEIGHT - 27)  # Avoid edges to allow space for checking
+
+            all_white = True
+            for dx in range(-10, 10):  # Check a 16x16 area centered on (x, y)
+                for dy in range(-10, 10):
+                    if bg_img.get_at((x + dx, y + dy))[:3] != WHITE[:3]:
+                        all_white = False
+                        break
+                if not all_white:
+                    break
+
+            # Check distance from existing candies
+            too_close = False
+            for _, (existing_x, existing_y) in coins:
+                if math.hypot(existing_x - x, existing_y - y) < 20:  # Check distance
+                    too_close = True
+                    break
+
+            if all_white and not too_close:
                 candy_asset = random.choice(candy_assets)
                 candy_image = pygame.image.load(candy_asset)
-                candy_image = pygame.transform.scale(candy_image, (30, 30))
+                candy_image = pygame.transform.scale(candy_image, (35, 35))
                 coins.append((candy_image, (x, y)))
-                break
+                break  # Stop looking after finding a valid spawn point
+            
+            max_attempts -= 1
 
 def reset_game():
     global score, coins, game_running, game_won, game_lose
@@ -229,24 +249,32 @@ while True:
 
         new_pos = player.move(keys)
 
-        #player_center_pos = (player.pos[0] + PLAYER_SIZE // 2, player.pos[1] + PLAYER_SIZE // 2)
         player_center_pos = (int(new_pos[0] + player.size // 2), int(new_pos[1] + player.size // 2))
         if bg_img.get_at(player_center_pos)[:3] == (0, 0, 0) and not (CIRCLE_POSITION[0] - CIRCLE_RADIUS < player_center_pos[0] < CIRCLE_POSITION[0] + CIRCLE_RADIUS and 
                                                                CIRCLE_POSITION[1] - CIRCLE_RADIUS < player_center_pos[1] < CIRCLE_POSITION[1] + CIRCLE_RADIUS):
-            
             player.bounce()
             if not player.is_damaged:
                 player.hearts -= 1
                 player.is_damaged = True
                 if player.hearts <= 0:
                     game_lose = True
-                    
         else:
             player.is_damaged = False
             player.pos = new_pos
 
-        player.pos[0] = max(0, min(player.pos[0], WIDTH - player.size))
-        player.pos[1] = max(0, min(player.pos[1], HEIGHT - player.size))
+        # Check for wall boundaries and call bounce if necessary
+        if player.pos[0] < 0:  # Left boundary
+            player.bounce()
+            player.pos[0] = 0  
+        elif player.pos[0] > WIDTH - player.size:  # Right boundary
+            player.bounce()
+            player.pos[0] = WIDTH - player.size
+        if player.pos[1] < 0:  # Top boundary
+            player.bounce()
+            player.pos[1] = 0  
+        elif player.pos[1] > HEIGHT - player.size:  # Bottom boundary
+            player.bounce()
+            player.pos[1] = HEIGHT - player.size
 
         for candy_image, (x, y) in coins[:]:
             if math.hypot(candy_image.get_rect(center=(x, y)).center[0] - player_center_pos[0],
