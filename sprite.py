@@ -2,10 +2,11 @@ import pygame
 import sys
 import math
 import random
-import time
 from os import listdir
 from os.path import isfile, join
 from imageConverter import ImageConvert
+import tkinter as tk
+from tkinter import filedialog
 
 pygame.init()
 
@@ -25,8 +26,8 @@ MAX_HEARTS = 3
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Image to Top Down Game")
 
-userImage = ImageConvert('images/irl/loadedImage.png')
-userImage.convert_to_bw_segmentate()
+# Initialize user image
+userImage = None  # Initially set to None, will be loaded later
 
 # Load background images
 bg_img = pygame.image.load('images/bw/bwBackground.jpg')
@@ -66,15 +67,22 @@ PLAYER_INITIAL_POSITION = (100 - PLAYER_SIZE // 2, 300 - PLAYER_SIZE // 2)
 
 # Game variables
 score = 0
-num_coins = 5
+num_coins = 7
 coins = []
-game_running = True
+game_start = True
+game_loading = False  # Added state for loading screen
+game_running = False
 game_won = False
 game_lose = False
-
-# Timer Variables
-time_limit = 30  # Time limit in seconds
+time_limit = 30
 timer = time_limit
+
+def open_file_dialog():
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+    file_path = filedialog.askopenfilename(title="Select an Image", 
+                                            filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif")])
+    return file_path
 
 class Player:
     def __init__(self, initial_position, size, speed):
@@ -137,36 +145,35 @@ class Player:
     def bounce(self):
         self.pos[0] -= self.speed * math.sin(math.radians(self.angle)) * 2
         self.pos[1] += self.speed * math.cos(math.radians(self.angle)) * 2
-        self.angle = (self.angle + 180) % 360
-
+        self.angle = (self.angle + 180) % 360 
+        
 def spawn_player():
     max_attempts = 100
     attempt = 0
     while max_attempts > 0:
         x = random.randint(27, WIDTH - 27)
         y = random.randint(27, HEIGHT - 27)
-
         all_white = True
+        ##############################
         for dx in range(-30, 30):
             for dy in range(-30, 30):
-                if bg_img.get_at((x + dx, y + dy))[:3] != WHITE[:3]:
-                    all_white = False
-                    break
+                if 0 <= x + dx < bg_img.get_width() and 0 <= y + dy < bg_img.get_height():
+                    if bg_img.get_at((x + dx, y + dy))[:3] != WHITE[:3]:
+                        all_white = False
+                        break
             if not all_white:
                 break
-
         if all_white:
-            return (x, y)  # Return the valid position for the player
-
+            return (x, y)
         max_attempts -= 1
         attempt += 1
-
+            #####################
+            
     return PLAYER_INITIAL_POSITION
 
 def spawn_coins(num_coins):
     for _ in range(num_coins):
         max_attempts = 100
-        attempt = 0
         while max_attempts > 0:
             x = random.randint(27, WIDTH - 27)
             y = random.randint(27, HEIGHT - 27)
@@ -194,12 +201,10 @@ def spawn_coins(num_coins):
                 break
             
             max_attempts -= 1
-            attempt += 1
-            print(attempt)
 
 def reset_game():
     global score, coins, game_running, game_won, game_lose, timer
-    player.pos = list(spawn_player())  # Set player position to a random white area
+    player.pos = list(spawn_player()) 
     player.angle = 0
     player.hearts = MAX_HEARTS
     player.is_damaged = False
@@ -209,7 +214,7 @@ def reset_game():
     game_running = True
     game_won = False
     game_lose = False
-    timer = time_limit  # Reset the timer
+    timer = time_limit 
 
 def draw_hearts():
     hearts_bg = pygame.Surface((MAX_HEARTS * 44, 40), pygame.SRCALPHA)
@@ -226,7 +231,7 @@ def draw_score():
     score_bg.fill((*BG_GREY, 216))
     window.blit(score_bg, score_rect.inflate(20, 20).topleft)
     window.blit(score_surface, score_rect)
-
+    
 def draw_timer():
     font = pygame.font.Font(None, 36)
     timer_surface = font.render(f'Time Left: {max(0, int(timer))}', True, WHITE)
@@ -236,38 +241,72 @@ def draw_timer():
     window.blit(timer_bg, timer_rect.inflate(20, 20).topleft)
     window.blit(timer_surface, timer_rect)
 
+
+def draw_start_screen():
+    window.fill(BLACK)
+    font = pygame.font.Font('CFHalloween-Regular.ttf', 20)
+    win_text = font.render("WELCOME TO PHOTO PHANTOM SCAVANGER HUNT", True, WHITE)
+    win_rect = win_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
+    window.blit(win_text, win_rect)
+
+    button_font = pygame.font.Font(None, 36)
+    button_text = button_font.render("Start", True, WHITE)
+    button_rect = button_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 ))
+    pygame.draw.rect(window, (255, 169, 71), button_rect.inflate(20, 10), border_radius=10)
+    window.blit(button_text, button_rect)
+
+    return button_rect
+
+def draw_loading_screen():
+    window.fill(BLACK)
+    font = pygame.font.Font(None, 32)
+    load_text = font.render("Load an image to continue", True, WHITE)
+    load_rect = load_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
+    window.blit(load_text, load_rect)
+
+    button_font = pygame.font.Font(None, 36)
+    button_text = button_font.render("Load Image", True, WHITE)
+    button_rect = button_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 ))
+    pygame.draw.rect(window, (255, 169, 71), button_rect.inflate(20, 10), border_radius=10)
+    window.blit(button_text, button_rect)
+
+    return button_rect
+
 def draw_win_screen():
     window.fill(BLACK)
-    font = pygame.font.Font(None, 72)
-    win_text = font.render("Congrats, you win!", True, WHITE)
-    win_rect = win_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
+    font = pygame.font.Font('CFHalloween-Regular.ttf', 72)
+    win_text = font.render("CONGRATS YOU WIN", True, WHITE)
+    win_rect = win_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
     window.blit(win_text, win_rect)
 
     button_font = pygame.font.Font(None, 36)
     button_text = button_font.render("Play Again", True, WHITE)
-    win_button_rect = button_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
-    pygame.draw.rect(window, (50, 50, 200), win_button_rect.inflate(20, 10), border_radius=10)
-    window.blit(button_text, win_button_rect)
+    button_rect = button_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 ))
+    pygame.draw.rect(window, (255, 169, 71), button_rect.inflate(20, 10), border_radius=10)
+    window.blit(button_text, button_rect)
 
-    return win_button_rect
+    return button_rect
 
 def draw_lose_screen():
     window.fill(BLACK)
-    font = pygame.font.Font(None, 72)
-    lose_text = font.render("Game Over!", True, WHITE)
-    lose_rect = lose_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
+    font = pygame.font.Font('CFHalloween-Regular.ttf', 72)
+    lose_text = font.render("YOU LOSE", True, WHITE)
+    lose_rect = lose_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
     window.blit(lose_text, lose_rect)
 
     button_font = pygame.font.Font(None, 36)
     button_text = button_font.render("Play Again", True, WHITE)
-    lose_button_rect = button_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
-    pygame.draw.rect(window, (200, 50, 50), lose_button_rect.inflate(20, 10), border_radius=10)
-    window.blit(button_text, lose_button_rect)
+    button_rect = button_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 ))
+    pygame.draw.rect(window, (255, 169, 71), button_rect.inflate(20, 10), border_radius=10)
+    window.blit(button_text, button_rect)
 
-    return lose_button_rect
+    return button_rect
 
-spawn_coins(num_coins)
 player = Player(spawn_player(), PLAYER_SIZE, PLAYER_SPEED)
+
+# Spawn initial coins
+spawn_coins(num_coins)
+
 clock = pygame.time.Clock()
 
 while True:
@@ -275,18 +314,37 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-        elif event.type == pygame.MOUSEBUTTONDOWN and (game_won or game_lose):
-            if draw_win_screen().collidepoint(event.pos):
-                reset_game()
-                timer = time_limit  # Reset the timer when starting a new game
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if game_start:  # Check if in start screen
+                button_rect = draw_start_screen()
+                if button_rect.collidepoint(event.pos):  # Check if the start button is clicked
+                    game_start = False  # Change game state to show loading screen
+                    game_loading = True  # Now we show the loading screen
+            elif game_loading:
+                button_rect = draw_loading_screen()
+                if button_rect.collidepoint(event.pos):
+                    # Open file dialog and load image
+                    file_path = open_file_dialog()
+                    if file_path:
+                        try:
+                            userImage = ImageConvert(file_path)  # Use the loaded image path
+                            userImage.convert_to_bw_segmentate()  # Assuming this is the method you want to call
+                            game_loading = False  # Stop loading
+                            game_running = True  # Start the game
+                            
+                        except Exception as e:
+                            print("Error loading image:", e)
+            elif game_won or game_lose:
+                if draw_win_screen().collidepoint(event.pos) or draw_lose_screen().collidepoint(event.pos):
+                    reset_game()
+                    timer = time_limit
 
     keys = pygame.key.get_pressed()
 
     if game_running:
-        timer -= 1 / FPS  # Decrease timer
+        timer -= 1 / FPS
         if timer <= 0:
-            game_lose = True  # Lose the game if time runs out
-
+            game_lose = True
         if keys[pygame.K_d]:
             player.rotate(-5)
         if keys[pygame.K_a]:
@@ -297,12 +355,14 @@ while True:
         player_center_pos = (int(new_pos[0] + player.size // 2), int(new_pos[1] + player.size // 2))
         if bg_img.get_at(player_center_pos)[:3] == (0, 0, 0) and not (CIRCLE_POSITION[0] - CIRCLE_RADIUS < player_center_pos[0] < CIRCLE_POSITION[0] + CIRCLE_RADIUS and 
                                                                CIRCLE_POSITION[1] - CIRCLE_RADIUS < player_center_pos[1] < CIRCLE_POSITION[1] + CIRCLE_RADIUS):
+            
             player.bounce()
             if not player.is_damaged:
                 player.hearts -= 1
                 player.is_damaged = True
                 if player.hearts <= 0:
                     game_lose = True
+                    
         else:
             player.is_damaged = False
             player.pos = new_pos
@@ -319,8 +379,10 @@ while True:
                     game_won = True
                     game_running = False
 
+    # Draw everything
     window.blit(bg_img, (0, 0))
     window.blit(bgOver_img, (0, 0))
+    
     if not game_running and not (game_won or game_lose):
         window.blit(bgOver_img, (0, 0))
 
@@ -330,13 +392,19 @@ while True:
     player.draw(window)
     draw_hearts()
     draw_score()
-    draw_timer()  # Draw the timer
+    draw_timer()
 
     if game_won:
         draw_win_screen()
 
     if game_lose:
         draw_lose_screen()
+        
+    if game_loading:
+        draw_loading_screen()
+
+    if game_start:
+        draw_start_screen()
 
     pygame.display.flip()
     clock.tick(FPS)
